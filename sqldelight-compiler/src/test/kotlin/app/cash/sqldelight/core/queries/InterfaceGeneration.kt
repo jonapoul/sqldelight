@@ -8,9 +8,11 @@ import app.cash.sqldelight.dialects.postgresql.PostgreSqlDialect
 import app.cash.sqldelight.test.util.FixtureCompiler
 import app.cash.sqldelight.test.util.withInvariantLineSeparators
 import app.cash.sqldelight.test.util.withUnderscores
+import com.google.common.truth.Subject
 import com.google.common.truth.Truth.assertThat
 import com.google.common.truth.Truth.assertWithMessage
 import java.io.File
+import org.intellij.lang.annotations.Language
 import org.junit.Rule
 import org.junit.Test
 import org.junit.rules.TemporaryFolder
@@ -813,6 +815,105 @@ class InterfaceGeneration {
       |  @java.lang.Deprecated
       |  public val other_thing: kotlin.String,
       |)
+      |
+      """.trimMargin(),
+    )
+  }
+
+  @Test fun `don't generate a wrapper type for single column queries`() {
+    val result = FixtureCompiler.compileSql(
+      """
+      |CREATE TABLE song(
+      |    title TEXT,
+      |    track_number INTEGER NOT NULL,
+      |    album_id INTEGER
+      |);
+      |
+      |selectNullableTitleByAlbumId:
+      |SELECT title FROM song WHERE album_id = ?;
+      |
+      |selectNonNullTrackNumberByAlbumId:
+      |SELECT track_number FROM song WHERE album_id = ?;
+      """.trimMargin(),
+      temporaryFolder,
+      fileName = "song.sq",
+    )
+
+    assertThat(result.errors).isEmpty()
+    val generatedInterface = result.compilerOutput.get(
+      File(result.outputDirectory, "com/example/SongQueries.kt"),
+    )
+    assertThat(generatedInterface).isNotNull()
+    assertThat(generatedInterface.toString()).isEqualTo(
+      """
+      |package com.example
+      |
+      |import app.cash.sqldelight.Query
+      |import app.cash.sqldelight.TransacterImpl
+      |import app.cash.sqldelight.db.QueryResult
+      |import app.cash.sqldelight.db.SqlCursor
+      |import app.cash.sqldelight.db.SqlDriver
+      |import kotlin.Any
+      |import kotlin.Long
+      |import kotlin.String
+      |
+      |public class SongQueries(
+      |  driver: SqlDriver,
+      |) : TransacterImpl(driver) {
+      |  public fun selectNullableTitleByAlbumId(album_id: Long?): Query<String?> =
+      |      SelectNullableTitleByAlbumIdQuery(album_id) { cursor ->
+      |    cursor.getString(0)
+      |  }
+      |
+      |  public fun selectNonNullTrackNumberByAlbumId(album_id: Long?): Query<Long> =
+      |      SelectNonNullTrackNumberByAlbumIdQuery(album_id) { cursor ->
+      |    cursor.getLong(0)!!
+      |  }
+      |
+      |  private inner class SelectNullableTitleByAlbumIdQuery<out T : Any>(
+      |    public val album_id: Long?,
+      |    mapper: (SqlCursor) -> T,
+      |  ) : Query<T>(mapper) {
+      |    override fun addListener(listener: Query.Listener) {
+      |      driver.addListener("song", listener = listener)
+      |    }
+      |
+      |    override fun removeListener(listener: Query.Listener) {
+      |      driver.removeListener("song", listener = listener)
+      |    }
+      |
+      |    override fun <R> execute(mapper: (SqlCursor) -> QueryResult<R>): QueryResult<R> =
+      |        driver.executeQuery(null,
+      |        ""${'"'}SELECT title FROM song WHERE album_id ${'$'}{ if (album_id == null) "IS" else "=" } ?""${'"'},
+      |        mapper, 1) {
+      |      bindLong(0, album_id)
+      |    }
+      |
+      |    override fun toString(): String = "song.sq:selectNullableTitleByAlbumId"
+      |  }
+      |
+      |  private inner class SelectNonNullTrackNumberByAlbumIdQuery<out T : Any>(
+      |    public val album_id: Long?,
+      |    mapper: (SqlCursor) -> T,
+      |  ) : Query<T>(mapper) {
+      |    override fun addListener(listener: Query.Listener) {
+      |      driver.addListener("song", listener = listener)
+      |    }
+      |
+      |    override fun removeListener(listener: Query.Listener) {
+      |      driver.removeListener("song", listener = listener)
+      |    }
+      |
+      |    override fun <R> execute(mapper: (SqlCursor) -> QueryResult<R>): QueryResult<R> =
+      |        driver.executeQuery(null,
+      |        ""${'"'}SELECT track_number FROM song WHERE album_id ${'$'}{ if (album_id == null) "IS" else "=" } ?""${'"'},
+      |        mapper, 1) {
+      |      bindLong(0, album_id)
+      |    }
+      |
+      |    override fun toString(): String = "song.sq:selectNonNullTrackNumberByAlbumId"
+      |  }
+      |}
       |
       """.trimMargin(),
     )
