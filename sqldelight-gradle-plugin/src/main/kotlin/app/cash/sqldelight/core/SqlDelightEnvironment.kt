@@ -17,6 +17,7 @@ package app.cash.sqldelight.core
 
 import app.cash.sqldelight.core.annotators.OptimisticLockCompilerAnnotator
 import app.cash.sqldelight.core.compiler.SqlDelightCompiler
+import app.cash.sqldelight.core.compiler.model.CompilerConfig
 import app.cash.sqldelight.core.lang.DatabaseFileType
 import app.cash.sqldelight.core.lang.DatabaseFileViewProviderFactory
 import app.cash.sqldelight.core.lang.MigrationFile
@@ -64,6 +65,7 @@ class SqlDelightEnvironment(
   private val verifyMigrations: Boolean,
   override var dialect: SqlDelightDialect,
   moduleName: String,
+  private val config: CompilerConfig,
   private val sourceFolders: List<File> = compilationUnit.sourceFolders
     .filter { it.folder.exists() && !it.dependency }
     .map { it.folder },
@@ -90,7 +92,7 @@ class SqlDelightEnvironment(
       registerFileType(MigrationFileType, MigrationFileType.defaultExtension)
       registerParserDefinition(MigrationParserDefinition())
       registerFileType(SqlDelightFileType, SqlDelightFileType.defaultExtension)
-      registerParserDefinition(SqlDelightParserDefinition())
+      registerParserDefinition(SqlDelightParserDefinition(config))
       registerFileType(DatabaseFileType, DatabaseFileType.defaultExtension)
       FileTypeFileViewProviders.INSTANCE.addExplicitExtension(DatabaseFileType, DatabaseFileViewProviderFactory())
     }
@@ -162,7 +164,7 @@ class SqlDelightEnvironment(
       if (it !is SqlDelightQueriesFile) return@forSourceFiles
       logger("----- START ${it.name} ms -------")
       val timeTaken = measureTimeMillis {
-        SqlDelightCompiler.writeInterfaces(module, dialect, it, writer)
+        SqlDelightCompiler.writeInterfaces(module, dialect, it, writer, config)
         sourceFile = it
       }
       logger("----- END ${it.name} in $timeTaken ms ------")
@@ -174,6 +176,7 @@ class SqlDelightEnvironment(
         SqlDelightCompiler.writeInterfaces(
           file = migrationFile,
           output = writer,
+          config = config,
           includeAll = true,
         )
         SqlDelightCompiler.writeImplementations(module, migrationFile, moduleName, writer)

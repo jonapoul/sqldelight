@@ -52,6 +52,7 @@ import com.squareup.kotlinpoet.PropertySpec
 data class NamedQuery(
   val name: String,
   val queryable: QueryWithResults,
+  private val config: CompilerConfig,
   private val statementIdentifier: StmtIdentifierMixin? = null,
 ) : BindableQuery(statementIdentifier, queryable.statement) {
   internal val select get() = queryable.statement
@@ -140,7 +141,9 @@ data class NamedQuery(
     return needsWrapper && (pureTable == null || parent is SqlCreateVirtualTableStmt)
   }
 
-  internal fun needsWrapper() = (resultColumns.size > 1 || resultColumns[0].javaType.isNullable)
+  internal fun needsWrapper() =
+    (resultColumns.size > 1 || resultColumns[0].javaType.isNullable)
+      || config.generateWrapperForSingleColumnQueries
 
   internal fun needsQuerySubType() = arguments.isNotEmpty() || statement is SqlDelightStmtClojureStmtList
 

@@ -19,6 +19,7 @@ import app.cash.sqldelight.core.SqlDelightFileIndex
 import app.cash.sqldelight.core.compiler.integration.adapterProperty
 import app.cash.sqldelight.core.compiler.integration.needsAdapters
 import app.cash.sqldelight.core.compiler.model.BindableQuery
+import app.cash.sqldelight.core.compiler.model.CompilerConfig
 import app.cash.sqldelight.core.compiler.model.NamedExecute
 import app.cash.sqldelight.core.compiler.model.NamedMutator.Delete
 import app.cash.sqldelight.core.compiler.model.NamedMutator.Insert
@@ -41,6 +42,7 @@ import com.intellij.psi.util.parentOfType
 
 class SqlDelightQueriesFile(
   viewProvider: FileViewProvider,
+  private val config: CompilerConfig,
 ) : SqlDelightFile(viewProvider, SqlDelightLanguage),
   SqlAnnotatedElement {
   val namedQueries by lazy {
@@ -51,6 +53,7 @@ class SqlDelightQueriesFile(
           name = it.identifier.name!!,
           queryable = typeResolver.queryWithResults(it.statement)!!,
           statementIdentifier = it.identifier,
+          config = config,
         )
       }
   }
@@ -78,6 +81,7 @@ class SqlDelightQueriesFile(
           statementIdentifier = it.stmtIdentifierClojure as StmtIdentifierMixin,
           queryable = lastQuery,
           name = it.stmtIdentifierClojure.name!!,
+          config = config,
         )
       } else {
         return@map NamedExecute(

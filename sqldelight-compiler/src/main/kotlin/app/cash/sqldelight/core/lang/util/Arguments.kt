@@ -15,6 +15,7 @@
  */
 package app.cash.sqldelight.core.lang.util
 
+import app.cash.sqldelight.core.compiler.model.CompilerConfig
 import app.cash.sqldelight.core.compiler.model.NamedQuery
 import app.cash.sqldelight.core.lang.types.typeResolver
 import app.cash.sqldelight.dialect.api.IntermediateType
@@ -64,12 +65,12 @@ internal fun SqlBindExpr.isArrayParameter(): Boolean {
   return (parent is SqlInExpr && this == parent.lastChild)
 }
 
-internal fun SqlExpr.inferredType(): IntermediateType {
+internal fun SqlExpr.inferredType(config: CompilerConfig): IntermediateType {
   return when (val parentRule = parent!!) {
     is SqlExpr -> {
       val result = typeResolver.argumentType(parentRule, this)
       if (result.dialectType == ARGUMENT) {
-        parentRule.inferredType()
+        parentRule.inferredType(config)
       } else {
         result
       }
@@ -83,11 +84,11 @@ internal fun SqlExpr.inferredType(): IntermediateType {
       parentParent.multiColumnExpressionList[0].exprList[idx].type()
     }
 
-    is SqlValuesExpression -> parentRule.argumentType(this)
+    is SqlValuesExpression -> parentRule.argumentType(expression = this, config)
     is SqlSetterExpression -> typeResolver.argumentType(parentRule, this)
     is SqlLimitingTerm -> IntermediateType(INTEGER)
     is SqlResultColumn -> {
-      (parentRule.parent as SqlSelectStmt).argumentType(parentRule)
+      (parentRule.parent as SqlSelectStmt).argumentType(parentRule, config)
         ?: IntermediateType(NULL, Any::class.asClassName())
     }
     else -> IntermediateType(NULL, Any::class.asClassName())
@@ -97,7 +98,7 @@ internal fun SqlExpr.inferredType(): IntermediateType {
 /**
  * Return the expected type for [argument], which is the argument type exposed in the generated api.
  */
-internal fun SqlExpr.argumentType(argument: SqlExpr): IntermediateType {
+internal fun SqlExpr.argumentType(argument: SqlExpr, config: CompilerConfig): IntermediateType {
   return when (this) {
     is SqlInExpr -> {
       if (argument === firstChild) return IntermediateType(ARGUMENT)
@@ -111,7 +112,7 @@ internal fun SqlExpr.argumentType(argument: SqlExpr): IntermediateType {
 
       return if (argument.isCaseResult()) {
         val validOtherArg = children.lastOrNull { it is SqlExpr && it !== argument && it !is SqlBindExpr && it.isCaseResult() }
-        return validOtherArg?.type() ?: inferredType()
+        return validOtherArg?.type() ?: inferredType(config)
       } else if (argument.isCondition()) {
         val validOtherCondition = children.lastOrNull { it is SqlExpr && it !== argument && it !is SqlBindExpr && it.isCondition() }
         return validOtherCondition?.type() ?: IntermediateType(PrimitiveType.BOOLEAN)
@@ -170,7 +171,7 @@ internal fun SqlExpr.argumentType(argument: SqlExpr): IntermediateType {
   }
 }
 
-private fun SqlValuesExpression.argumentType(expression: SqlExpr): IntermediateType {
+private fun SqlValuesExpression.argumentType(expression: SqlExpr, config: CompilerConfig): IntermediateType {
   val argumentIndex = children.indexOf(expression)
   if (argumentIndex == -1) throw AssertionError()
 
@@ -185,14 +186,14 @@ private fun SqlValuesExpression.argumentType(expression: SqlExpr): IntermediateT
     }
     is SqlSelectStmt -> {
       val compoundSelect = parentRule.parent as SqlCompoundSelectStmt
-      NamedQuery("temp", SelectQueryable(compoundSelect)).resultColumns[argumentIndex]
+      NamedQuery("temp", SelectQueryable(compoundSelect), config).resultColumns[argumentIndex]
     }
 
     else -> throw AssertionError()
   }
 }
 
-private fun SqlSelectStmt.argumentType(result: SqlResultColumn): IntermediateType? {
+private fun SqlSelectStmt.argumentType(result: SqlResultColumn, config: CompilerConfig): IntermediateType? {
   val index = resultColumnList.indexOf(result)
   val compoundSelect = parent!! as SqlCompoundSelectStmt
 
@@ -208,10 +209,10 @@ private fun SqlSelectStmt.argumentType(result: SqlResultColumn): IntermediateTyp
       val parentResult = PsiTreeUtil.getParentOfType(parentRule, SqlResultColumn::class.java)
 
       if (parentResult == null) {
-        NamedQuery("temp", SelectQueryable(compoundSelect, compoundSelect))
+        NamedQuery("temp", SelectQueryable(compoundSelect, compoundSelect), config)
           .resultColumns[resultColumnList.indexOf(result)]
       } else {
-        (parentResult.parent as SqlSelectStmt).argumentType(parentResult)
+        (parentResult.parent as SqlSelectStmt).argumentType(parentResult, config)
       }
     }
   }

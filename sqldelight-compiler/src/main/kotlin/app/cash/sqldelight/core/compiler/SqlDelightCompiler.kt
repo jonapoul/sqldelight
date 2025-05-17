@@ -17,6 +17,7 @@ package app.cash.sqldelight.core.compiler
 
 import app.cash.sqldelight.core.SqlDelightFileIndex
 import app.cash.sqldelight.core.capitalize
+import app.cash.sqldelight.core.compiler.model.CompilerConfig
 import app.cash.sqldelight.core.compiler.model.NamedQuery
 import app.cash.sqldelight.core.lang.MigrationFile
 import app.cash.sqldelight.core.lang.SqlDelightFile
@@ -45,9 +46,10 @@ object SqlDelightCompiler {
     dialect: SqlDelightDialect,
     file: SqlDelightQueriesFile,
     output: FileAppender,
+    config: CompilerConfig,
   ) {
     try {
-      writeTableInterfaces(file, output)
+      writeTableInterfaces(file, output, config)
       writeQueryInterfaces(file, output)
       writeQueries(module, dialect, file, output)
     } catch (e: InvalidElementDetectedException) {
@@ -58,9 +60,10 @@ object SqlDelightCompiler {
   fun writeInterfaces(
     file: MigrationFile,
     output: FileAppender,
+    config: CompilerConfig,
     includeAll: Boolean = false,
   ) {
-    writeTableInterfaces(file, output, includeAll)
+    writeTableInterfaces(file, output, config, includeAll)
   }
 
   fun writeDatabaseInterface(
@@ -125,6 +128,7 @@ object SqlDelightCompiler {
   internal fun writeTableInterfaces(
     file: SqlDelightFile,
     output: FileAppender,
+    config: CompilerConfig,
     includeAll: Boolean = false,
   ) {
     val packageName = file.packageName ?: return
@@ -132,8 +136,12 @@ object SqlDelightCompiler {
       val statement = query.tableName.parent
 
       if (statement is SqlCreateViewStmt && statement.compoundSelectStmt != null) {
-        listOf(NamedQuery(allocateName(statement.viewName), SelectQueryable(statement.compoundSelectStmt!!)))
-          .writeQueryInterfaces(file, output)
+        val namedQuery = NamedQuery(
+          name = allocateName(statement.viewName),
+          queryable = SelectQueryable(statement.compoundSelectStmt!!),
+          config = config,
+        )
+        listOf(namedQuery).writeQueryInterfaces(file, output)
         return@forEach
       }
 

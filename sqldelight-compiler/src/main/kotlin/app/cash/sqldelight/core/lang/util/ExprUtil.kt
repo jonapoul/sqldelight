@@ -86,7 +86,7 @@ internal object AnsiSqlTypeResolver : TypeResolver {
     argument: SqlExpr,
   ): IntermediateType {
     return when (parent) {
-      is SqlExpr -> parent.argumentType(argument)
+      is SqlExpr -> parent.argumentType(argument, config)
       is SqlSetterExpression -> parent.argumentType()
       else -> throw IllegalStateException("Cannot infer argument type for $parent")
     }

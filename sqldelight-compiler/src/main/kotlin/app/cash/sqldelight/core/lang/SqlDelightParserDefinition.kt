@@ -15,6 +15,7 @@
  */
 package app.cash.sqldelight.core.lang
 
+import app.cash.sqldelight.core.compiler.model.CompilerConfig
 import com.alecstrong.sql.psi.core.SqlFileBase
 import com.alecstrong.sql.psi.core.SqlParser
 import com.alecstrong.sql.psi.core.SqlParserDefinition
@@ -25,10 +26,12 @@ import com.intellij.psi.PsiElement
 import com.intellij.psi.stubs.PsiFileStub
 import com.intellij.psi.tree.ILightStubFileElementType
 
-class SqlDelightParserDefinition : SqlParserDefinition() {
+class SqlDelightParserDefinition(
+  private val config: CompilerConfig,
+) : SqlParserDefinition() {
   private val parserUtil = ParserUtil()
 
-  override fun createFile(viewProvider: FileViewProvider) = SqlDelightQueriesFile(viewProvider)
+  override fun createFile(viewProvider: FileViewProvider) = SqlDelightQueriesFile(viewProvider, config)
   override fun getFileNodeType() = FILE
   override fun getLanguage() = SqlDelightLanguage
 
