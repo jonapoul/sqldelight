@@ -3,6 +3,7 @@ package app.cash.sqldelight.gradle
 import app.cash.sqldelight.core.SqlDelightCompilationUnit
 import app.cash.sqldelight.core.SqlDelightDatabaseProperties
 import app.cash.sqldelight.core.SqlDelightEnvironment
+import app.cash.sqldelight.core.lang.MigrationFilenameStrategy
 import app.cash.sqldelight.core.lang.SqlDelightQueriesFile
 import app.cash.sqldelight.core.lang.util.forInitializationStatements
 import app.cash.sqldelight.dialect.api.SqlDelightDialect
@@ -52,6 +53,7 @@ abstract class GenerateSchemaTask : SqlDelightWorkerTask() {
       it.verifyMigrations.set(verifyMigrations)
       it.compilationUnit.set(compilationUnit)
       it.driverProperties.set(driverProperties)
+      it.filenameStrategy.set(migrationFilenameStrategy)
     }
   }
 
@@ -70,6 +72,7 @@ abstract class GenerateSchemaTask : SqlDelightWorkerTask() {
     val compilationUnit: Property<SqlDelightCompilationUnit>
     val verifyMigrations: Property<Boolean>
     val driverProperties: MapProperty<String, String>
+    val filenameStrategy: Property<MigrationFilenameStrategy>
   }
 
   abstract class GenerateSchema : WorkAction<GenerateSchemaWorkParameters> {
@@ -90,11 +93,12 @@ abstract class GenerateSchemaTask : SqlDelightWorkerTask() {
         verifyMigrations = parameters.verifyMigrations.get(),
         compilationUnit = parameters.compilationUnit.get(),
         dialect = ServiceLoader.load(SqlDelightDialect::class.java).first(),
+        filenameStrategy = parameters.filenameStrategy.get(),
       )
 
       var maxVersion = 1L
       environment.forMigrationFiles { migrationFile ->
-        maxVersion = maxOf(maxVersion, migrationFile.version + 1)
+        maxVersion = maxOf(maxVersion, migrationFile.version)
       }
 
       val outputDirectory = parameters.outputDirectory.get().asFile

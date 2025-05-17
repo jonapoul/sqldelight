@@ -6,10 +6,18 @@ import com.intellij.psi.FileViewProvider
 
 class MigrationFile(
   viewProvider: FileViewProvider,
+  private val filenameStrategy: MigrationFilenameStrategy,
 ) : SqlDelightFile(viewProvider, MigrationLanguage) {
   val version: Long by lazy {
-    name.substringBeforeLast(".$MIGRATION_EXTENSION")
-      .filter { it in '0'..'9' }.toLongOrNull() ?: 0
+    val versionTo = name
+      .substringBeforeLast(".$MIGRATION_EXTENSION")
+      .filter { it in '0'..'9' }
+      .toLongOrNull()
+      ?: 0
+    when (filenameStrategy) {
+      MigrationFilenameStrategy.VersionFrom -> versionTo + 1
+      MigrationFilenameStrategy.VersionTo -> versionTo
+    }
   }
 
   internal fun sqlStatements() = sqlStmtList!!.stmtList

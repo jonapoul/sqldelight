@@ -21,6 +21,7 @@ import app.cash.sqldelight.core.lang.DatabaseFileType
 import app.cash.sqldelight.core.lang.DatabaseFileViewProviderFactory
 import app.cash.sqldelight.core.lang.MigrationFile
 import app.cash.sqldelight.core.lang.MigrationFileType
+import app.cash.sqldelight.core.lang.MigrationFilenameStrategy
 import app.cash.sqldelight.core.lang.MigrationParserDefinition
 import app.cash.sqldelight.core.lang.SqlDelightFile
 import app.cash.sqldelight.core.lang.SqlDelightFileType
@@ -64,6 +65,7 @@ class SqlDelightEnvironment(
   private val verifyMigrations: Boolean,
   override var dialect: SqlDelightDialect,
   moduleName: String,
+  private val filenameStrategy: MigrationFilenameStrategy,
   private val sourceFolders: List<File> = compilationUnit.sourceFolders
     .filter { it.folder.exists() && !it.dependency }
     .map { it.folder },
@@ -88,7 +90,7 @@ class SqlDelightEnvironment(
 
     initializeApplication {
       registerFileType(MigrationFileType, MigrationFileType.defaultExtension)
-      registerParserDefinition(MigrationParserDefinition())
+      registerParserDefinition(MigrationParserDefinition(filenameStrategy))
       registerFileType(SqlDelightFileType, SqlDelightFileType.defaultExtension)
       registerParserDefinition(SqlDelightParserDefinition())
       registerFileType(DatabaseFileType, DatabaseFileType.defaultExtension)
@@ -198,9 +200,9 @@ class SqlDelightEnvironment(
       .map { psiManager.findDirectory(it)!! }
       .flatMap { directory: PsiDirectory -> directory.migrationFiles() }
     migrationFiles.sortedBy { it.version }
-      .forEach {
+      .forEach { migrationFile ->
         val errorElements = ArrayList<PsiErrorElement>()
-        PsiTreeUtil.processElements(it) { element ->
+        PsiTreeUtil.processElements(migrationFile) { element ->
           when (element) {
             is PsiErrorElement -> errorElements.add(element)
             // Uncomment when sqm files understand their state of the world.
@@ -210,11 +212,11 @@ class SqlDelightEnvironment(
         }
         if (errorElements.isNotEmpty()) {
           throw SqlDelightException(
-            "Error Reading ${it.name}:\n\n" +
+            "Error Reading ${migrationFile.name}:\n\n" +
               errorElements.joinToString(separator = "\n") { errorMessage(it, it.errorDescription) },
           )
         }
-        body(it)
+        body(migrationFile)
       }
   }
 

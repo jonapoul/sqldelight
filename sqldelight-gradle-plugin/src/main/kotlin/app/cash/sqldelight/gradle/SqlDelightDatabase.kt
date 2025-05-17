@@ -3,6 +3,7 @@ package app.cash.sqldelight.gradle
 import app.cash.sqldelight.VERSION
 import app.cash.sqldelight.core.capitalize
 import app.cash.sqldelight.core.lang.MIGRATION_EXTENSION
+import app.cash.sqldelight.core.lang.MigrationFilenameStrategy
 import app.cash.sqldelight.core.lang.SQLDELIGHT_EXTENSION
 import app.cash.sqldelight.gradle.kotlin.Source
 import app.cash.sqldelight.gradle.kotlin.sources
@@ -34,6 +35,10 @@ abstract class SqlDelightDatabase @Inject constructor(
   abstract val migrationOutputDirectory: DirectoryProperty
   val migrationOutputFileFormat: Property<String> = project.objects.property(String::class.java).convention(".sql")
   val generateAsync: Property<Boolean> = project.objects.property(Boolean::class.java).convention(false)
+
+  val migrationFilenameStrategy: Property<MigrationFilenameStrategy> = project.objects
+    .property(MigrationFilenameStrategy::class.java)
+    .convention(MigrationFilenameStrategy.Default)
 
   val configurationName: String = "${name}DialectClasspath"
 
@@ -311,6 +316,7 @@ abstract class SqlDelightDatabase @Inject constructor(
       it.include("**${File.separatorChar}*.$MIGRATION_EXTENSION")
       it.migrationOutputExtension.set(migrationOutputFileFormat)
       it.outputDirectory.set(migrationOutputDirectory)
+      it.migrationFilenameStrategy.set(migrationFilenameStrategy)
       it.group = SqlDelightPlugin.GROUP
       it.description = "Generate valid sql migration files for ${source.name} $name."
       it.properties = getProperties()

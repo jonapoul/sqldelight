@@ -3,6 +3,7 @@ package app.cash.sqldelight.gradle
 import app.cash.sqldelight.core.SqlDelightCompilationUnit
 import app.cash.sqldelight.core.SqlDelightDatabaseProperties
 import app.cash.sqldelight.core.SqlDelightEnvironment
+import app.cash.sqldelight.core.lang.MigrationFilenameStrategy
 import app.cash.sqldelight.core.lang.util.rawSqlText
 import app.cash.sqldelight.dialect.api.SqlDelightDialect
 import java.io.File
@@ -36,6 +37,8 @@ abstract class GenerateMigrationOutputTask : SqlDelightWorkerTask() {
 
   @get:Input abstract val migrationOutputExtension: Property<String>
 
+  @get:Input abstract val migrationFilenameStrategy: Property<MigrationFilenameStrategy>
+
   @TaskAction
   fun generateSchemaFile() {
     workQueue().submit(GenerateMigration::class.java) {
@@ -44,6 +47,7 @@ abstract class GenerateMigrationOutputTask : SqlDelightWorkerTask() {
       it.properties.set(properties)
       it.migrationExtension.set(migrationOutputExtension)
       it.compilationUnit.set(compilationUnit)
+      it.filenameStrategy.set(migrationFilenameStrategy)
     }
   }
 
@@ -61,6 +65,7 @@ abstract class GenerateMigrationOutputTask : SqlDelightWorkerTask() {
     val properties: Property<SqlDelightDatabaseProperties>
     val compilationUnit: Property<SqlDelightCompilationUnit>
     val migrationExtension: Property<String>
+    val filenameStrategy: Property<MigrationFilenameStrategy>
   }
 
   abstract class GenerateMigration : WorkAction<GenerateSchemaWorkParameters> {
@@ -78,6 +83,7 @@ abstract class GenerateMigrationOutputTask : SqlDelightWorkerTask() {
         verifyMigrations = false,
         compilationUnit = parameters.compilationUnit.get(),
         dialect = ServiceLoader.load(SqlDelightDialect::class.java).first(),
+        filenameStrategy = parameters.filenameStrategy.get(),
       )
 
       val outputDirectory = parameters.outputDirectory.get().asFile

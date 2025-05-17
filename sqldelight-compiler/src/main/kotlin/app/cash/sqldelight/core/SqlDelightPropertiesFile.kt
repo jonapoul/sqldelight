@@ -15,6 +15,7 @@
  */
 package app.cash.sqldelight.core
 
+import app.cash.sqldelight.core.lang.MigrationFilenameStrategy
 import java.io.File
 import java.io.Serializable
 
@@ -36,6 +37,11 @@ interface SqlDelightDatabaseProperties : Serializable {
   val treatNullAsUnknownForEquality: Boolean
   val rootDirectory: File
   val generateAsync: Boolean
+}
+
+interface SqlDelightMigrationProperties : Serializable {
+  val filenameStrategy: MigrationFilenameStrategy
+  val verifyMigrations: Boolean
 }
 
 /**

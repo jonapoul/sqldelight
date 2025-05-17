@@ -3,6 +3,7 @@ package app.cash.sqldelight.gradle
 import app.cash.sqldelight.core.SqlDelightCompilationUnit
 import app.cash.sqldelight.core.SqlDelightDatabaseName
 import app.cash.sqldelight.core.SqlDelightDatabaseProperties
+import app.cash.sqldelight.core.SqlDelightMigrationProperties
 import app.cash.sqldelight.core.SqlDelightPropertiesFile
 import app.cash.sqldelight.core.SqlDelightSourceFolder
 import java.io.File
@@ -28,6 +29,18 @@ data class SqlDelightDatabasePropertiesImpl(
   // Only used by intellij plugin to help with resolution.
   @Internal override val rootDirectory: File,
 ) : SqlDelightDatabaseProperties
+
+data class SqlDelightMigrationPropertiesImpl(
+  @Input override val packageName: String,
+  @Nested override val compilationUnits: List<SqlDelightCompilationUnitImpl>,
+  @Input override val className: String,
+  @Nested override val dependencies: List<SqlDelightDatabaseNameImpl>,
+  @Input override val deriveSchemaFromMigrations: Boolean = false,
+  @Input override val treatNullAsUnknownForEquality: Boolean = false,
+  @Input override val generateAsync: Boolean = false,
+  // Only used by intellij plugin to help with resolution.
+  @Internal override val rootDirectory: File,
+) : SqlDelightMigrationProperties
 
 data class SqlDelightDatabaseNameImpl(
   @Input override val packageName: String,
